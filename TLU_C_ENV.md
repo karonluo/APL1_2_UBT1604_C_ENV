@@ -18,13 +18,18 @@
 >8. openvino 2021.2.185
 
 ## 环境准备
+### 建立 工作目录 环境变量
+
+~~~shell
+export workspace=/home/yt/software
+~~~
 
 ### 升级 Linux 内核到 5.7.0+
 
 ~~~shell
 # 下载 Linux 5.7.0 内核升级安装文件
 
-cd /home/yt/software
+cd $workspace
 
 wget  https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.7-rc5/linux-headers-5.7.0-050700rc5_5.7.0-050700rc5.202005101931_all.deb --no-check-certificate
 
@@ -35,6 +40,7 @@ wget https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.7-rc5/linux-image-unsigne
 wget https://kernel.ubuntu.com/~kernel-ppa/mainline/v5.7-rc5/linux-modules-5.7.0-050700rc5-generic_5.7.0-050700rc5.202005101931_amd64.deb --no-check-certificate
 
 dpkg -i ./*.deb
+
 reboot # 需要重新启动
 
 ~~~
@@ -43,61 +49,83 @@ reboot # 需要重新启动
 
 此处安装 OpenVINO 包括 所有依赖项 以及 INTEL_NEO_OCL
 
-### apt 安装
+安装完成后，执行环境设置。
+
+~~~shell
+export workspace=/home/yt/software
+echo "source /opt/intel/openvino_2021/bin/setupvars.sh" >> /etc/bash.bashrc
+source /etc/bash.bashrc
+~~~
+
+### 依赖软件安装
 
 > 注意下面需要安装的软件，如果需要自制 Linux 系统，则必须完全手动编译一套。
 ~~~bash
 
-apt -y install dh-autoreconf libssl-dev uuid-dev curl libjsoncpp-dev libcurl4-openssl-dev libssh-dev
+apt -y install dh-autoreconf libssl-dev uuid-dev curl libjsoncpp-dev libcurl4-openssl-dev libssh-dev \
+git make dh-autoreconf pkg-config build-essential libgtk2.0-dev libblas-dev libopenblas-dev \
+libass-dev libmp3lame-dev libvpx-dev libx264-dev libx265-dev libtheora-dev libxcb-shm0-dev \
+libncurses5-dev libpthread-stubs0-dev libpciaccess-dev libxvmc-dev xutils-dev libsdl2-dev \
+autoconf automake libtool bzip2 nasm yasm python3-pip libgstreamer1.0-dev libarchive-dev \
+gstreamer1.0-plugins-{base,good,bad} libgstreamer-plugins-{base,good,bad}1.0-dev gstreamer1.0-libav \
+gstreamer1.0-vaapi liblua5.2-dev lua5.2 liba52-dev libxcb-composite0-dev libxcb-xv0-dev libprotoc-dev libssh2-1-dev \
+flex bison libopenmpi-dev intel-gpu-tools
 
-apt -y install libncurses5-dev libpthread-stubs0-dev libpciaccess-dev libxvmc-dev xutils-dev libsdl2-dev
 
-apt -y install libass-dev libmp3lame-dev libvpx-dev libx264-dev libx265-dev libtheora-dev libxcb-shm0-dev
+~~~
 
-apt -y install git make dh-autoreconf pkg-config build-essential libgtk2.0-dev libblas-dev libopenblas-dev
 
-apt -y install autoconf automake libtool bzip2 nasm yasm python3-pip libgstreamer1.0-dev libarchive-dev
-
-apt -y install gstreamer1.0-plugins-{base,good,bad} libgstreamer-plugins-{base,good,bad}1.0-dev gstreamer1.0-libav
-
-apt -y install gstreamer1.0-vaapi liblua5.2-dev lua5.2 liba52-dev libxcb-composite0-dev libxcb-xv0-dev libprotoc-dev libssh2-1-dev
-
-apt -y install flex bison
-
+~~~bash
 pip3 install numpy==1.12.0
+
+~~~
+
+### 创建 OPENCL 缓存目录
+~~~shell
+
+mkdir /opt/intel/cl_cache_dir
+echo "export cl_cache_dir=/opt/intel/cl_cache_dir" >> /etc/bash.bashrc
+source /etc/bash.bashrc
+
 ~~~
 
 ### cmake版本要求
 
 ~~~bash
 # 获取最新版本
+cd $workspace
+
 git clone https://github.com/Kitware/CMake.git
 cd CMake
 
 # 卸载现有的cmake
 apt remove --purge --auto-remove cmake
-# 从cmake官网下载cmake 3.13版本
+# 从cmake官网下载cmake 3.20 版本
 # 安装
 ./bootstrap
-make -j4
+make -j8
 make install
 
 ln -s /usr/local/bin/cmake /usr/bin/cmake
 # 检查
 cmake --version
+
 ~~~
 
 
 ## Build and install libdrm 2.4.80
 ~~~bash
-cd /home/yt/software
+cd $workspace
+
 git clone https://github.com/intel/iotg-lin-gfx-libdrm
 # 安装到系统目录替换掉原来的
-cd /home/yt/software/iotg-lin-gfx-libdrm
+cd iotg-lin-gfx-libdrm
+# 注意这里，如果不是重新 git 的，可能编译有残留，需要删除这个目录重新，git clone 一次这个项目。
 ./autogen.sh
 ./configure --prefix=/usr --exec-prefix=/
-make -j4
+make -j8
 make install
+
 ~~~
 
 
@@ -108,11 +136,11 @@ make install
 rm -rf /usr/include/va
 rm -rf /usr/lib/x86_64-linux-gnu/libva*	
 # 下载最新的 libva
-cd /home/yt/software
+cd $workspace
 git clone https://github.com/intel/libva.git
 cd libva
 ./autogen.sh --prefix=/opt/intel/libva --libdir=/opt/intel/libva/lib
-make -j4
+make -j8
 make install
 
 #环境变量配置
@@ -130,25 +158,28 @@ ldconfig
 ## Build and install libva-utils 2.6.0
 
 ```bash
-cd /home/yt/software
+cd $workspace
+
 git clone https://github.com/intel/libva-utils.git
 cd libva-utils
 ./autogen.sh --prefix=/opt/intel/libva-utils --libdir=/opt/intel/libva-utils/lib
-make -j4
+make -j8
 make install
 ln -s /opt/intel/libva-utils/bin/vainfo /usr/bin/vainfo
+
 ```
 
 ## Build and install gmmlib
 ~~~bash
 # 下载最新的 gmmlib 
-cd /home/yt/software
+cd $workspace
+
 git clone https://github.com/intel/gmmlib.git
 cd gmmlib
 mkdir build 
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DARCH=64 ..
-make -j4
+make -j8
 make install
 # gmmlib 被安装到默认目录即 /usr/local 下面
 ~~~
@@ -163,7 +194,8 @@ make install
 
 ~~~bash
 # 下载最新版本的 Intel Media Driver 21.1.1
-cd /home/yt/software
+cd $workspace
+
 git clone https://github.com/intel/media-driver.git
 mkdir build_media
 cd build_media
@@ -171,7 +203,7 @@ cmake ../media-driver \
 -DCMAKE_INSTALL_PREFIX=/opt/intel/media-driver \
 -DCMAKE_INSTALL_LIBDIR=/opt/intel/media-driver/lib \
 -DLIBVA_DRIVERS_PATH=/opt/intel/media-driver/lib/dri
-make -j4
+make -j8
 make install
 # 设置驱动程序类型
 echo "export LIBVA_DRIVER_NAME=iHD" >> /etc/bash.bashrc
@@ -195,13 +227,14 @@ vainfo
 
 ~~~bash
 # 下载最新的 msdk
-cd /home/yt/software
+cd $workspace
+
 git clone https://github.com/Intel-Media-SDK/MediaSDK msdk
 cd msdk
 mkdir build
 cd build
 cmake -DBUILD_SAMPLES=OFF ..
-make
+make -j8
 make install
 echo "export LD_LIBRARY_PATH=/opt/intel/mediasdk/lib:/opt/intel/mediasdk/lib/mfx:\$LD_LIBRARY_PATH" >> /etc/bash.bashrc
 echo "export PKG_CONFIG_PATH=/opt/intel/mediasdk/lib/pkgconfig:\$PKG_CONFIG_PATH" >> /etc/bash.bashrc
@@ -213,6 +246,7 @@ ldconfig
 # 由于前边以及做过 Intel 显卡驱动并且版本比msdk中的版本高，因此需要将其替换掉。
 rm -rf /opt/intel/mediasdk/lib64/iHD_drv_video.so
 ln -s /opt/intel/media-driver/lib/dri/iHD_drv_video.so /opt/intel/mediasdk/lib64/iHD_drv_video.so
+
 ~~~
 
 
@@ -222,8 +256,9 @@ ln -s /opt/intel/media-driver/lib/dri/iHD_drv_video.so /opt/intel/mediasdk/lib64
 
 ~~~bash
 #从https://github.com/FFmpeg/FFmpeg/releases/tag/n4.2.2 下载ffmpeg
+# 通过编译的方式，默认让 FFmpeg 调用 vaapi 硬件解码 hevc(h265)\h264
+cd $workspace
 
-cd /home/yt/software
 git clone https://github.com/FFmpeg/FFmpeg.git
 cd FFmpeg
 ./configure --prefix=/usr/local/ffmpeg \
@@ -246,7 +281,9 @@ cd FFmpeg
 --enable-vaapi \
 --disable-x86asm \
 --enable-decoder=hevc \
---enable-libmfx
+--enable-libmfx \
+--enable-hwaccel=h264_vaapi \
+--enable-hwaccel=hevc_vaapi
 
 make -j8
 make install
@@ -265,11 +302,14 @@ ln -s /usr/local/ffmpeg/bin/ffprobe /usr/bin/ffprobe
 source /etc/bash.bashrc
 updatedb
 ldconfig
+
 ~~~
 
 
 ## Build and install gstreamer-media-SDK
 ~~~bash
+cd $workspace
+
 git clone https://github.com/intel/gstreamer-media-SDK.git
 cd gstreamer-media-SDK
 
@@ -277,12 +317,15 @@ cd gstreamer-media-SDK
 
 ## BUild and install OPENCV 4.2.0-openvino
 ~~~bash
+cd $workspace
+
 # git clone https://github.com/opencv/opencv.git
 # 这里不能使用 git 最新的，建议下载 4.2.0-openvino
+cd opencv-4.2.0-openvino
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DWITH_MFX=ON -DWITH_FFMPEG=ON -DWITH_GSTREAMER=ON DWITH_VA_INTEL=ON ..
-make -j4
+make -j8
 make install
 echo "prefix=/usr/local" > /usr/local/lib/pkgconfig/opencv.pc
 echo "exec_prefix=\${prefix}" >> /usr/local/lib/pkgconfig/opencv.pc
@@ -295,11 +338,22 @@ echo "Version: 4.2.0-openvino" >> /usr/local/lib/pkgconfig/opencv.pc
 echo "Libs: -L\${exec_prefix}/lib -lopencv_objdetect -lopencv_dnn -lopencv_stitching -lopencv_photo -lopencv_ml -lopencv_calib3d -lopencv_features2d -lopencv_highgui -lopencv_flann -lopencv_videoio -lopencv_imgcodecs -lopencv_video -lopencv_imgproc -lopencv_core" >> /usr/local/lib/pkgconfig/opencv.pc
 echo "Libs.private: -ldl -lm -lpthread -lrt" >> /usr/local/lib/pkgconfig/opencv.pc
 echo "Cflags: -I\${includedir_old} -I\${includedir_new}" >> /usr/local/lib/pkgconfig/opencv.pc
+echo "export LD_LIBRARY_PATH=/usr/local/lib:\$LD_LIBRARY_PATH" >> /etc/bash.bashrc
+
+# 删除系统自带的 opencv 开发库
+rm -rf /usr/lib/x86_64-linux-gnu/libopencv_*
+
+source /etc/bash.bashrc
+updatedb
+ldconfig
+
 
 ~~~
 
 ## Build and install vlc-3.0.9.2
 ~~~bash
+cd $workspace
+
 wget https://mirror-hk.koddos.net/videolan/vlc/3.0.9.2/vlc-3.0.9.2.tar.xz
 tar xf vlc-3.0.9.2.tar.xz
 cd vlc-3.0.9.2.tar.xz
